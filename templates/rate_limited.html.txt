@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}Too many requests{% endblock %}
+
+{% block content %}
+<section class="tool-card center-content">
+    <h1>Please slow down</h1>
+    <p>Too many requests were sent. Please wait one minute and try again.</p>
+</section>
+{% endblock %}

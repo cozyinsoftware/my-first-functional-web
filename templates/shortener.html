@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Link Shortener{% endblock %}
+
+{% block content %}
+<section class="tool-card">
+    <h1>Link Shortener</h1>
+    <p class="muted">Visitors see a five-second ad page before they can open the destination.</p>
+
+    <label for="long-url">Long website link</label>
+    <input id="long-url" type="text" placeholder="https://example.com/page">
+
+    <div class="button-row">
+        <button id="shorten-link" class="btn">Create short link</button>
+    </div>
+
+    <p id="shorten-status" class="status" aria-live="polite"></p>
+
+    <div id="short-result-wrap" class="result-box hidden">
+        <h2>Your short link</h2>
+        <input id="short-result" type="text" readonly>
+        <button id="copy-short-link" class="btn">Copy short link</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/shortener.js') }}" defer></script>
+{% endblock %}

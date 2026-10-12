@@ -1,0 +1,122 @@
+let html5QrCode = null;
+
+const startCameraButton = document.getElementById("start-camera");
+const stopCameraButton = document.getElementById("stop-camera");
+const scanFile = document.getElementById("scan-file");
+const dropZone = document.getElementById("scan-drop-zone");
+const status = document.getElementById("scan-status");
+const resultBox = document.getElementById("scan-result-box");
+const resultText = document.getElementById("scan-result");
+const copyButton = document.getElementById("copy-scan-result");
+const openButton = document.getElementById("open-scan-result");
+
+function showResult(value) {
+    resultText.value = value;
+    resultBox.classList.remove("hidden");
+
+    if (isHttpLink(value)) {
+        openButton.href = value;
+        openButton.classList.remove("hidden");
+    } else {
+        openButton.classList.add("hidden");
+    }
+}
+
+function scanImage(file) {
+    if (!file || !file.type.startsWith("image/")) {
+        status.textContent = "Please choose an image file.";
+        return;
+    }
+
+    status.textContent = "Scanning image...";
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const image = new Image();
+
+        image.onload = () => {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = image.width;
+            canvas.height = image.height;
+            context.drawImage(image, 0, 0);
+
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code) {
+                status.textContent = "QR code found.";
+                showResult(code.data);
+            } else {
+                status.textContent = "No QR code was found in this image.";
+            }
+        };
+
+        image.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+async function startCamera() {
+    try {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("camera-reader");
+        }
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                status.textContent = "QR code found.";
+                showResult(decodedText);
+                stopCamera();
+            }
+        );
+
+        status.textContent = "Camera is active. Point it at a QR code.";
+    } catch {
+        status.textContent = "Could not start the camera. Use HTTPS or localhost and allow camera access.";
+    }
+}
+
+async function stopCamera() {
+    if (!html5QrCode) return;
+
+    try {
+        await html5QrCode.stop();
+        status.textContent = "Camera stopped.";
+    } catch {
+        // Camera may already be stopped.
+    }
+}
+
+startCameraButton.addEventListener("click", startCamera);
+stopCameraButton.addEventListener("click", stopCamera);
+
+scanFile.addEventListener("change", () => scanImage(scanFile.files[0]));
+
+copyButton.addEventListener("click", () => copyText(resultText.value));
+
+dropZone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    dropZone.classList.add("drag-over");
+});
+
+dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("drag-over");
+});
+
+dropZone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("drag-over");
+    scanImage(event.dataTransfer.files[0]);
+});
+
+document.addEventListener("paste", (event) => {
+    const item = [...event.clipboardData.items].find((entry) => entry.type.startsWith("image/"));
+
+    if (item) {
+        scanImage(item.getAsFile());
+    }
+});

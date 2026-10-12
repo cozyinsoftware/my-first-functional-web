@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Link to QR{% endblock %}
+
+{% block content %}
+<section class="tool-card">
+    <h1>Link to QR Code</h1>
+    <p class="muted">The generated QR code contains your real destination link directly.</p>
+
+    <label for="qr-url">Website link</label>
+    <input id="qr-url" type="text" placeholder="example.com or https://example.com">
+
+    <div class="button-row">
+        <button id="generate-qr" class="btn">Generate</button>
+    </div>
+
+    <p id="qr-status" class="status" aria-live="polite"></p>
+
+    <div id="qr-result-wrap" class="qr-result hidden">
+        <img id="qr-image" alt="Generated QR code">
+        <a id="download-qr" class="btn btn-light" download="qr-code.png">Download PNG</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/qr-generator.js') }}" defer></script>
+{% endblock %}

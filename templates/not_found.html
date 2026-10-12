@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Link not found{% endblock %}
+
+{% block content %}
+<section class="tool-card center-content">
+    <h1>Link not found</h1>
+    <p>This short link does not exist, was removed, or has expired.</p>
+    <a class="btn" href="{{ url_for('scanner') }}">Go to home page</a>
+</section>
+{% endblock %}

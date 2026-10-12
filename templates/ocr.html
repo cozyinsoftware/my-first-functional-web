@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Image to Text{% endblock %}
+
+{% block content %}
+<section class="tool-card">
+    <h1>Image to Text</h1>
+    <p class="muted">Upload, drag and drop, or paste an image with Ctrl+V.</p>
+
+    <label for="ocr-language">Text language</label>
+    <select id="ocr-language">
+        <option value="eng">English</option>
+        <option value="vie">Vietnamese</option>
+        <option value="spa">Spanish</option>
+        <option value="fra">French</option>
+        <option value="deu">German</option>
+    </select>
+
+    <label class="drop-zone" id="ocr-drop-zone" for="ocr-file">
+        <strong>Drop an image here</strong>
+        <span>or click to choose an image, or paste with Ctrl+V</span>
+        <input id="ocr-file" type="file" accept="image/*" hidden>
+    </label>
+
+    <div id="ocr-progress-wrap" class="progress-wrap hidden">
+        <div class="progress-bar">
+            <div id="ocr-progress" class="progress-fill"></div>
+        </div>
+        <p id="ocr-status" class="status"></p>
+    </div>
+
+    <textarea id="ocr-result" class="large-textarea" placeholder="Text found in your image will appear here..."></textarea>
+
+    <div class="button-row">
+        <button id="copy-ocr" class="btn">Copy text</button>
+        <button id="download-ocr" class="btn btn-light">Download .txt</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+<script src="{{ url_for('static', filename='js/ocr.js') }}" defer></script>
+{% endblock %}

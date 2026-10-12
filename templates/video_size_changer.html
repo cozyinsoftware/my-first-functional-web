@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Video Size Changer{% endblock %}
+
+{% block content %}
+<section class="tool-card">
+    <h1>Video Size Changer</h1>
+    <p class="muted">Change resolution, FPS, bitrate, format, and quality. Files stay on this server only for ~30 minutes.</p>
+
+    {% if not ffmpeg_ready %}
+    <div class="result-box" style="border-left: 4px solid #ef4444; background: #fef2f2; margin-bottom: 16px;">
+        <h2 style="color: #991b1b; margin-top:0;">FFmpeg Not Detected</h2>
+        <p style="color: #7f1d1d; margin-bottom: 8px;">
+            The video converter requires FFmpeg. Please install FFmpeg using:
+        </p>
+        <code style="display:block; padding:8px 12px; background:#fee2e2; border-radius:6px; color:#991b1b; font-family:monospace; margin-bottom:8px;">winget install --id Gyan.FFmpeg -e</code>
+        <p style="color: #7f1d1d; font-size:0.9em; margin-bottom:0;">Then restart your server so the new PATH is loaded.</p>
+    </div>
+    {% elif ffmpeg_outdated %}
+    <div class="result-box" style="border-left: 4px solid #f59e0b; background: #fffbeb; margin-bottom: 16px;">
+        <h2 style="color: #b45309; margin-top:0;">Outdated FFmpeg Detected</h2>
+        <p style="color: #92400e; margin-bottom: 8px;">
+            Your system has an outdated FFmpeg build ({{ ffmpeg_version or 'pre-2018' }}). Some modern codecs (e.g. H.265, VP9, WebM) or filter options may fail. We recommend upgrading:
+        </p>
+        <code style="display:block; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#b45309; font-family:monospace; margin-bottom:8px;">winget install --id Gyan.FFmpeg -e</code>
+        <p style="color: #92400e; font-size:0.9em; margin-bottom:0;">For best results with your current version, use <strong>Standard Mode &rarr; Convert to MP4 &rarr; 720p</strong>.</p>
+    </div>
+    {% endif %}
+
+    <fieldset class="mode-switch" role="radiogroup" aria-label="Conversion mode">
+        <legend>Mode</legend>
+        <label><input type="radio" name="vc-mode" value="standard" checked> Standard <span class="muted">— simple presets</span></label>
+        <label><input type="radio" name="vc-mode" value="professional"> Professional <span class="muted">— full control</span></label>
+    </fieldset>
+
+    <label class="drop-zone" id="vc-drop-zone" for="vc-file">
+        <strong>Drop a video here</strong>
+        <span>or click to choose (MP4, MOV, AVI, MKV, WebM, MPEG · max 7 GB — large files take longer to upload and convert)</span>
+        <input id="vc-file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,video/mpeg,.mp4,.mov,.avi,.mkv,.webm,.mpeg,.mpg,.m4v" hidden>
+    </label>
+    <p id="vc-file-info" class="status" aria-live="polite"></p>
+
+    <!-- Source Video Preview -->
+    <div id="vc-source-preview-wrap" class="hidden" style="margin-top: 12px; margin-bottom: 12px; text-align: center;">
+        <p class="muted" style="margin-bottom:6px; font-size:0.9em;">Selected video preview:</p>
+        <video id="vc-source-preview" controls playsinline style="max-width: 100%; max-height: 280px; border-radius: 8px; background: #000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></video>
+    </div>
+
+    <!-- Standard Mode -->
+    <div id="vc-standard">
+        <label for="vc-task">What do you want to do?</label>
+        <select id="vc-task">
+            <option value="compress">Compress video — make the file smaller</option>
+            <option value="mp4">Convert to MP4 — plays almost everywhere</option>
+            <option value="webm">Convert to WebM — small files for the web</option>
+            <option value="custom">Custom — pick resolution, FPS, and quality below</option>
+        </select>
+
+        <div class="form-grid">
+            <div>
+                <label for="vc-resolution">Resolution</label>
+                <select id="vc-resolution">
+                    <option value="source">Keep original</option>
+                    <option value="360p">360p — smallest, for messages</option>
+                    <option value="480p">480p — small, basic quality</option>
+                    <option value="720p" selected>720p HD — good balance</option>
+                    <option value="1080p">1080p Full HD — sharp</option>
+                    <option value="2160p">4K — largest, very sharp</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-fps">Frame rate (FPS)</label>
+                <select id="vc-fps">
+                    <option value="source" selected>Keep original</option>
+                    <option value="24">24 FPS — cinematic</option>
+                    <option value="30">30 FPS — smooth, standard</option>
+                    <option value="60">60 FPS — very smooth, larger file</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-quality">Quality</label>
+                <select id="vc-quality">
+                    <option value="low">Low — smallest file</option>
+                    <option value="medium" selected>Medium — balanced</option>
+                    <option value="high">High — best look, larger file</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="vc-estimate" class="result-box" aria-live="polite">
+            <h2>Estimated output size</h2>
+            <p id="vc-estimate-text" class="muted">Choose a file to see an estimate.</p>
+        </div>
+    </div>
+
+    <!-- Professional Mode -->
+    <div id="vc-pro" class="hidden">
+        <div class="form-grid">
+            <div>
+                <label for="vc-format">Output format / container</label>
+                <select id="vc-format">
+                    <option value="mp4" selected>MP4 (.mp4)</option>
+                    <option value="webm">WebM (.webm)</option>
+                    <option value="mov">MOV (.mov)</option>
+                    <option value="mkv">MKV (.mkv)</option>
+                    <option value="avi">AVI (.avi)</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-vcodec">Video codec</label>
+                <select id="vc-vcodec">
+                    <option value="libx264" selected>H.264 (libx264) — widest support</option>
+                    <option value="libx265">H.265 (libx265) — smaller, slower</option>
+                    <option value="libvpx-vp9">VP9 (libvpx-vp9) — for WebM</option>
+                    <option value="libvpx">VP8 (libvpx) — for WebM</option>
+                    <option value="mpeg4">MPEG-4 — legacy devices</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-acodec">Audio codec</label>
+                <select id="vc-acodec">
+                    <option value="aac" selected>AAC — default</option>
+                    <option value="mp3">MP3</option>
+                    <option value="opus">Opus — for WebM</option>
+                    <option value="vorbis">Vorbis — for WebM</option>
+                    <option value="ac3">AC-3</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-preset">Preset / encoding speed</label>
+                <select id="vc-preset">
+                    <option value="ultrafast">Ultrafast — fastest, larger file</option>
+                    <option value="superfast">Superfast</option>
+                    <option value="veryfast" selected>Veryfast — balanced</option>
+                    <option value="faster">Faster</option>
+                    <option value="fast">Fast</option>
+                    <option value="medium">Medium</option>
+                    <option value="slow">Slow — smaller, slower</option>
+                    <option value="slower">Slower</option>
+                    <option value="veryslow">Veryslow — smallest, slowest</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-width">Width (px, 16–7680, blank = auto)</label>
+                <input id="vc-width" type="number" min="16" max="7680" placeholder="e.g. 1280">
+            </div>
+            <div>
+                <label for="vc-height">Height (px, 16–7680, blank = auto)</label>
+                <input id="vc-height" type="number" min="16" max="7680" placeholder="e.g. 720">
+            </div>
+            <div>
+                <label for="vc-pro-fps">Frame rate FPS (1–120, blank = keep)</label>
+                <input id="vc-pro-fps" type="number" min="1" max="120" step="any" placeholder="e.g. 30">
+            </div>
+            <div>
+                <label for="vc-vbitrate">Video bitrate (blank = auto). e.g. 800k, 2M</label>
+                <input id="vc-vbitrate" type="text" inputmode="numeric" placeholder="e.g. 2M">
+            </div>
+            <div>
+                <label for="vc-abitrate">Audio bitrate (blank = auto). e.g. 128k</label>
+                <input id="vc-abitrate" type="text" inputmode="numeric" placeholder="e.g. 128k">
+            </div>
+            <div>
+                <label for="vc-crf">CRF / quality 0–51, lower = better (blank = auto)</label>
+                <input id="vc-crf" type="number" min="0" max="51" placeholder="e.g. 23">
+            </div>
+            <div>
+                <label for="vc-aspect">Aspect ratio</label>
+                <select id="vc-aspect">
+                    <option value="source" selected>Keep source</option>
+                    <option value="16:9">16:9 widescreen</option>
+                    <option value="4:3">4:3 classic</option>
+                    <option value="1:1">1:1 square</option>
+                    <option value="9:16">9:16 vertical</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-rotation">Rotation</label>
+                <select id="vc-rotation">
+                    <option value="0" selected>No rotation</option>
+                    <option value="90">Rotate 90°</option>
+                    <option value="180">Rotate 180°</option>
+                    <option value="270">Rotate 270°</option>
+                </select>
+            </div>
+            <div>
+                <label for="vc-trim-start">Trim start (seconds or mm:ss, blank = start)</label>
+                <input id="vc-trim-start" type="text" placeholder="e.g. 5 or 01:30">
+            </div>
+            <div>
+                <label for="vc-trim-end">Trim end (seconds or mm:ss, blank = end)</label>
+                <input id="vc-trim-end" type="text" placeholder="e.g. 65 or 02:00">
+            </div>
+        </div>
+        <label class="check-row"><input id="vc-remove-audio" type="checkbox"> Remove audio (mute video)</label>
+        <div id="vc-pro-warnings" class="result-box hidden" aria-live="polite"></div>
+    </div>
+
+    <div class="button-row" style="margin-top:16px">
+        <button id="vc-convert" class="btn">Convert video</button>
+        <button id="vc-reset" class="btn btn-light">Reset</button>
+    </div>
+
+    <div id="vc-progress-wrap" class="progress-wrap hidden">
+        <div class="progress-bar"><div id="vc-progress" class="progress-fill"></div></div>
+        <p id="vc-status" class="status" aria-live="polite"></p>
+    </div>
+
+    <div id="vc-result" class="result-box hidden">
+        <h2>Conversion Complete! 🎉</h2>
+        <p id="vc-result-text" class="muted"></p>
+        <div id="vc-result-comparison" style="margin: 8px 0; font-size: 1.05em;"></div>
+        <div id="vc-result-preview-wrap" style="margin: 12px 0; text-align: center;">
+            <video id="vc-result-preview" controls playsinline style="max-width: 100%; max-height: 320px; border-radius: 8px; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></video>
+        </div>
+        <p id="vc-result-warnings" class="status"></p>
+        <div class="button-row" style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+            <a id="vc-download" class="btn btn-download" href="#" download style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.05rem; padding: 12px 24px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span id="vc-download-text">Download Converted Video</span>
+            </a>
+            <button id="vc-convert-another" class="btn btn-light" type="button" style="padding: 12px 20px;">
+                Convert Another Video
+            </button>
+        </div>
+    </div>
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/video_size_changer.js') }}" defer></script>
+{% endblock %}

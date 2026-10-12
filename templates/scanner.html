@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}QR Scanner{% endblock %}
+
+{% block content %}
+<section class="tool-card">
+    <h1>QR Code Scanner</h1>
+    <p class="muted">Scan with your camera, upload an image, paste an image, or drag one here.</p>
+
+    <div class="button-row">
+        <button id="start-camera" class="btn">Start camera</button>
+        <button id="stop-camera" class="btn btn-light">Stop camera</button>
+    </div>
+
+    <div id="camera-reader" class="camera-reader"></div>
+
+    <label class="drop-zone" id="scan-drop-zone" for="scan-file">
+        <strong>Drop a QR image here</strong>
+        <span>or click to choose an image, or paste with Ctrl+V</span>
+        <input id="scan-file" type="file" accept="image/*" hidden>
+    </label>
+
+    <p id="scan-status" class="status" aria-live="polite"></p>
+
+    <div id="scan-result-box" class="result-box hidden">
+        <h2>Result</h2>
+        <textarea id="scan-result" readonly></textarea>
+        <div class="button-row">
+            <button id="copy-scan-result" class="btn">Copy</button>
+            <a id="open-scan-result" class="btn hidden" target="_blank" rel="noopener">Open</a>
+        </div>
+    </div>
+</section>
+
+<section class="tool-card" aria-label="All tools">
+    <h2>All tools</h2>
+    <div class="tools-grid">
+        <a class="tool-link" href="{{ url_for('scanner') }}"><strong>QR Scanner</strong><span>Scan codes with camera or image.</span></a>
+        <a class="tool-link" href="{{ url_for('image_to_text') }}"><strong>Image to Text</strong><span>Extract text from images.</span></a>
+        <a class="tool-link" href="{{ url_for('link_to_qr') }}"><strong>Link to QR</strong><span>Turn links into QR codes.</span></a>
+        <a class="tool-link" href="{{ url_for('link_shortener') }}"><strong>Link Shortener</strong><span>Make long links short.</span></a>
+        <a class="tool-link" href="{{ url_for('video_size_changer') }}"><strong>Video Size Changer</strong><span>Resize, compress, and convert video.</span></a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Please wait{% endblock %}
+
+{% block content %}
+<section class="tool-card ad-gate">
+    <h1>Your link is almost ready</h1>
+    <p>Please wait before opening the destination website.</p>
+
+    <div class="ad gate-ad">
+        <!-- PLACE GOOGLE ADSENSE CODE HERE -->
+        Ad space
+    </div>
+
+    <p id="countdown-text" class="countdown">Please wait 5 seconds...</p>
+
+    <button id="open-link" class="btn" disabled>Open Link</button>
+    <button id="report-link" class="text-button">Report bad link</button>
+
+    <p id="gate-status" class="status" aria-live="polite"></p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.shortLinkToken = {{ token|tojson }};
+</script>
+<script>
+    let secondsLeft = 5;
+    const countdownText = document.getElementById("countdown-text");
+    const openButton = document.getElementById("open-link");
+    const reportButton = document.getElementById("report-link");
+    const gateStatus = document.getElementById("gate-status");
+
+    const timer = setInterval(() => {
+        secondsLeft -= 1;
+
+        if (secondsLeft > 0) {
+            countdownText.textContent = `Please wait ${secondsLeft} seconds...`;
+            return;
+        }
+
+        clearInterval(timer);
+        countdownText.textContent = "Your link is ready.";
+        openButton.disabled = false;
+    }, 1000);
+
+    openButton.addEventListener("click", async () => {
+        openButton.disabled = true;
+        gateStatus.textContent = "Opening link...";
+
+        const response = await fetch("/api/unlock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: window.shortLinkToken })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            gateStatus.textContent = data.error || "Could not open this link.";
+            openButton.disabled = false;
+            return;
+        }
+
+        window.location.href = data.open_url;
+    });
+
+    reportButton.addEventListener("click", async () => {
+        const reason = window.prompt("Why are you reporting this link?");
+
+        if (reason === null) {
+            return;
+        }
+
+        const response = await fetch("/api/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: window.shortLinkToken,
+                reason: reason
+            })
+        });
+
+        const data = await response.json();
+        gateStatus.textContent = data.message || data.error || "Report sent.";
+    });
+</script>
+{% endblock %}
